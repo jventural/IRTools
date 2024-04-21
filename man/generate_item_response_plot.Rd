@@ -1,6 +1,6 @@
 \name{generate_item_response_plot}
 \alias{generate_item_response_plot}
-\title{Generate Item Response Curves Using mirt and ggplot2}
+\title{Generate Item Response Curves Using mirt,ggplot2 and jrt}
 
 \description{
 This function generates item response curves for specified items from a given IRT model, using the 'mirt' package. It allows for customization of the plot appearance, including greyscale options and the color of facet labels. The function ensures inputs are appropriately checked and provides clear labeling of each item's curve within the generated plot, making it useful for detailed examination of item characteristics across different trait levels.

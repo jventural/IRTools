@@ -1,4 +1,5 @@
 generate_item_response_plot <- function(Modelo, item_names, greyscale = FALSE, fill = "#CB4335") {
+  library(jrt)
   library(ggplot2) # Asegurar que ggplot2 está cargado
   library(mirt)    # Asegurar que mirt está cargado
 
