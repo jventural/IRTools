@@ -1,11 +1,24 @@
 Package: IRTools
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Tools for Item Response Theory and Differential Item Functioning Analysis
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Author: Dr. José Ventura-León
+Maintainer: Dr. José Ventura-León <jventura@university.edu>
+Description: IRTools provides advanced tools for analyzing and visualizing Item Response Theory 
+    models and conducting Differential Item Functioning (DIF) analysis. It includes functions 
+    for fitting IRT models, evaluating model fit and reliability, and performing detailed DIF 
+    analysis with support for multiple group comparisons and data balancing using SMOTE. 
+    Functions like 'evaluate_DRF' offer comprehensive analysis of uniform and non-uniform DIF 
+    across groups, enhancing the utility of IRT in educational and psychological research.
+License: GPL-3
 Encoding: UTF-8
 LazyData: true
+Imports:
+    dplyr,
+    mirt,
+    PsyMetricTools,
+    ggplot2,
+    RColorBrewer
+Suggests:
+    knitr,
+    rmarkdown
