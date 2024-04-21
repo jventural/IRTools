@@ -3,9 +3,8 @@ evaluate_DRF <- function(data, items, balance = TRUE, model_spec, group_col, ite
   library(PsyMetricTools) # Ensure PsyMetricTools is installed for smote_multiclass
   library(mirt)           # Ensure mirt is installed for modeling
 
-  # Function to format DIF results
   # Function to format DIF results dynamically
-  format_dif_results <- function(data) {
+  format_dif_results <- function(data, dif_type) {
     # Identify the key columns dynamically
     dif_col <- grep("DIF", names(data), value = TRUE)
     ci_lower_col <- grep("CI_2.5", names(data), value = TRUE)
@@ -26,11 +25,10 @@ evaluate_DRF <- function(data, items, balance = TRUE, model_spec, group_col, ite
 
     # Selecting and renaming the columns
     result <- data[, c("groups", "item", "DIF_CI")]
-    names(result) <- c("groups", "item", "DIF [IC 95%]")
+    names(result) <- c("groups", "item", paste0(dif_type, " [IC 95%]"))
 
     return(result)
   }
-
 
   # Check if group_col exists in the data
   if (!group_col %in% names(data)) {
@@ -67,9 +65,9 @@ evaluate_DRF <- function(data, items, balance = TRUE, model_spec, group_col, ite
 
   # Extract and format DIF results
   results <- list(
-    dDIF = format_dif_results(DRF_model$dDIF),
-    sDIF = format_dif_results(DRF_model$sDIF),
-    uDIF = format_dif_results(DRF_model$uDIF)
+    dDIF = format_dif_results(DRF_model$dDIF, "dDIF"),
+    sDIF = format_dif_results(DRF_model$sDIF, "sDIF"),
+    uDIF = format_dif_results(DRF_model$uDIF, "uDIF")
   )
 
   return(results)
