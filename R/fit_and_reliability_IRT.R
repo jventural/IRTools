@@ -1,29 +1,40 @@
-fit_and_reliability_IRT <- function(model_list, model_names, modelfit_list) {
+fit_and_reliability_IRT <- function(model_list,
+                                    model_names,
+                                    modelfit_list,
+                                    rename_factors = NULL  # <- nuevo argumento
+) {
   library(tidyverse)
 
-  #Función interna 1
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Función interna 1: Tabla de bondades de ajuste para los modelos IRT
+  # ─────────────────────────────────────────────────────────────────────────────
   Table_fit_IRT <- function(model_list, model_names, modelfit_list) {
-    # Asegurarte de que los paquetes necesarios están cargados
-    if (!requireNamespace("dplyr", quietly = TRUE)) {
-      stop("El paquete dplyr es necesario para esta función. Por favor, instálalo utilizando install.packages('dplyr')")
-    }
-
     # Métricas a extraer
     metricas <- c("logLik", "AIC", "BIC")
+    results_df <- data.frame(Modelo = character(),
+                             logLik = numeric(),
+                             AIC    = numeric(),
+                             BIC    = numeric(),
+                             stringsAsFactors = FALSE)
 
-    # Inicializar un data.frame para almacenar los resultados
-    results_df <- data.frame(Modelo = character(), logLik = numeric(), AIC = numeric(), BIC = numeric(), stringsAsFactors = FALSE)
-
-    # Bucle para iterar sobre los modelos y extraer métricas
+    # Iterar sobre los modelos para extraer métricas
     for (i in seq_along(model_list)) {
-      metrics_values <- sapply(metricas, function(metrica) extract.mirt(model_list[[i]], metrica))
-      temp_df <- data.frame(Modelo = model_names[i], logLik = metrics_values[1], AIC = metrics_values[2], BIC = metrics_values[3], stringsAsFactors = FALSE)
+      metrics_values <- sapply(metricas, function(metrica) {
+        extract.mirt(model_list[[i]], metrica)
+      })
+      temp_df <- data.frame(
+        Modelo = model_names[i],
+        logLik = metrics_values[1],
+        AIC    = metrics_values[2],
+        BIC    = metrics_values[3],
+        stringsAsFactors = FALSE
+      )
       results_df <- rbind(results_df, temp_df)
     }
 
     row.names(results_df) <- NULL
 
-    # Unir las métricas de los modelos con la bondad de ajuste
+    # Unir métricas de los modelos con la bondad de ajuste
     fit_df <- bind_rows(modelfit_list) %>%
       bind_cols(results_df) %>%
       relocate(Modelo)
@@ -31,45 +42,76 @@ fit_and_reliability_IRT <- function(model_list, model_names, modelfit_list) {
     return(fit_df)
   }
 
-  #Función interna 2
-  calculate_empirical_rxx <- function(models, model_names) {
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Función interna 2: Calcular fiabilidad empírica
+  # ─────────────────────────────────────────────────────────────────────────────
+  calculate_empirical_rxx <- function(models, model_names, rename_factors) {
     if (length(models) != length(model_names)) {
       stop("La longitud de 'models' debe coincidir con la de 'model_names'.")
     }
 
-    # Inicializar un vector para almacenar los valores de fiabilidad empírica
-    reliability_values <- numeric(length(models))
+    reliability_results <- list()
 
-    # Bucle para procesar cada modelo
     for (i in seq_along(models)) {
-      eap_scores <- fscores(models[[i]],
-                            method = "EAP",
-                            full.scores.SE = TRUE,
-                            QMC = TRUE)
+      # 1) Obtener puntajes EAP para usar en empirical_rxx
+      eap_scores <- fscores(
+        models[[i]],
+        method          = "EAP",
+        full.scores.SE  = TRUE,
+        QMC             = TRUE
+      )
 
-      # Calcular la fiabilidad empírica y redondear a dos decimales
-      reliability_values[i] <- round(empirical_rxx(eap_scores), 2)
+      # 2) Renombrar las columnas de factores (si el usuario lo desea)
+      #    rename_factors es algo como c(G="Dependencia", S1="Necesidad", S2="Autonomia")
+      if (!is.null(rename_factors)) {
+        # Forma 1: usar recode() y un fallback .default
+        # Ojo: recode() no siempre funciona bien si las columnas no existen.
+        # En su lugar, podemos hacer un pequeño bucle y renombrar manualmente:
+
+        for (old_name in names(rename_factors)) {
+          new_name <- rename_factors[[old_name]]
+          # Si la columna old_name existe en eap_scores, la renombramos
+          if (old_name %in% colnames(eap_scores)) {
+            colnames(eap_scores)[colnames(eap_scores) == old_name] <- new_name
+          }
+        }
+      }
+
+      # 3) Calcular fiabilidad empírica (retorna vector nombrado)
+      rxx_values <- empirical_rxx(eap_scores)
+      rxx_values <- round(rxx_values, 2)
+
+      # 4) Pasar a data frame (1 fila) con las columnas = nombres del vector
+      df_temp <- as.data.frame(t(rxx_values)) %>%
+        mutate(Modelo = model_names[i]) %>%
+        relocate(Modelo)
+
+      reliability_results[[i]] <- df_temp
     }
 
-    # Crear un data.frame con los resultados
-    results_df <- data.frame(Modelo = model_names, Empirical_Rxx = reliability_values)
-
+    # 5) Combinar todos los data.frames
+    results_df <- bind_rows(reliability_results)
     return(results_df)
   }
 
-  # Verificar que los paquetes necesarios están cargados
-  if (!requireNamespace("dplyr", quietly = TRUE)) {
-    stop("El paquete dplyr es necesario para esta función. Por favor, instálalo utilizando install.packages('dplyr')")
-  }
-
-  # Obtener la tabla de bondades de ajuste para los modelos IRT
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 1. Obtener la tabla de bondades de ajuste para los modelos IRT
+  # ─────────────────────────────────────────────────────────────────────────────
   combined_results_df <- Table_fit_IRT(model_list, model_names, modelfit_list)
 
-  # Calcular la fiabilidad empírica para los modelos
-  reliability_results <- calculate_empirical_rxx(model_list, model_names)
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 2. Calcular la fiabilidad empírica con la posibilidad de renombrar factores
+  # ─────────────────────────────────────────────────────────────────────────────
+  reliability_results <- calculate_empirical_rxx(
+    model_list,
+    model_names,
+    rename_factors = rename_factors
+  )
 
-  # Unir las tablas de bondad de ajuste y fiabilidad empírica
-  final_df <- inner_join(combined_results_df, reliability_results, by = "Modelo")
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 3. Unir ambas tablas (bondad de ajuste y fiabilidad)
+  # ─────────────────────────────────────────────────────────────────────────────
+  final_df <- left_join(combined_results_df, reliability_results, by = "Modelo")
 
   return(final_df)
 }
